@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>라이브 피팅</title>
+<!--
+  dooot 라이브 피팅 (AnyWear 위젯).
+  진짜 https(예: GitHub Pages)에 올려서 앱 웹뷰/사파리로 열어야 카메라가 켜진다.
+  (WKWebView의 loadHTMLString = fake origin이라 카메라 거부됐던 것 → 실제 https면 해결)
+
+  옷 이미지는 쿼리로 전달:  fitting.html?garment=<이미지URL>
+  위젯은 페이지의 JSON-LD(@type:Product)를 "상품"으로 인식해 Try-On 버튼을 띄운다.
+-->
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#000;
+    font-family:-apple-system,BlinkMacSystemFont,sans-serif;}
+  .wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-height:100%;color:#fff;gap:18px;padding:24px;box-sizing:border-box;text-align:center;}
+  .wrap img{max-width:85%;max-height:62vh;object-fit:contain;border-radius:16px;}
+  .hint{font-size:15px;opacity:.65;line-height:1.5;}
+  .err{font-size:14px;opacity:.6;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <img id="garment" alt="옷" />
+    <div class="hint">사진 위 <b>Try-On</b> 버튼을 눌러<br>실시간으로 입어보세요 🪞</div>
+  </div>
+
+  <script>
+  (function () {
+    var params  = new URLSearchParams(location.search);
+    var garment = params.get('garment');
+
+    if (!garment) {
+      document.querySelector('.wrap').innerHTML =
+        '<div class="err">옷 이미지가 없어요. (garment 파라미터 필요)</div>';
+      return;
+    }
+
+    document.getElementById('garment').src = garment;
+
+    // og:image
+    var og = document.createElement('meta');
+    og.setAttribute('property', 'og:image');
+    og.content = garment;
+    document.head.appendChild(og);
+
+    // 위젯이 "상품 페이지"로 인식하도록 JSON-LD(@type:Product) 주입 (위젯 로드 전에).
+    var ld = document.createElement('script');
+    ld.type = 'application/ld+json';
+    ld.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": "내 옷",
+      "image": garment,
+      "description": "dooot live fitting",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "KRW",
+                  "availability": "https://schema.org/InStock" }
+    });
+    document.head.appendChild(ld);
+
+    // AnyWear 위젯 로드.
+    var s = document.createElement('script');
+    s.src = 'https://anywear.decart.ai/widget/latest/anywear.js?domain=' + location.hostname;
+    s.async = true;
+    document.body.appendChild(s);
+  })();
+  </script>
+</body>
+</html>
